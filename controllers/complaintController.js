@@ -22,7 +22,7 @@ exports.createComplaint = async (req, res) => {
 
     let proof_url = null;
     if (req.file) {
-      proof_url = `http://localhost:5000/uploads/${req.file.filename}`;
+      proof_url = `https://loudambackend.onrender.com/uploads/${req.file.filename}`;
     }
 
     const trackingId = generateTrackingId();
