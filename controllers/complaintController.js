@@ -1,16 +1,17 @@
 const pool = require('../config/db');
-const nodemailer = require('nodemailer');
+const mailer = require("../utils/mailer");
 
 const generateTrackingId = () => {
   return 'LD-' + Math.floor(100000 + Math.random() * 900000);
 };
 
-// EMAIL TRANSPORTER
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+
+// VERIFY EMAIL SERVER ON STARTUP
+mailer.verify((error) => {
+  if (error) {
+    console.log("❌ SMTP ERROR:", error);
+  } else {
+    console.log("📧 Email server is ready");
   }
 });
 
@@ -29,6 +30,14 @@ exports.createComplaint = async (req, res) => {
       description,
       desiredResolution
     } = req.body;
+
+    // ✅ validate email INSIDE function
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
 
     let proof_url = null;
 
@@ -65,7 +74,6 @@ exports.createComplaint = async (req, res) => {
       ]
     );
 
-    // FETCH INSERTED COMPLAINT
     const [rows] = await pool.query(
       `SELECT * FROM complaints WHERE id = ?`,
       [result.insertId]
@@ -73,37 +81,42 @@ exports.createComplaint = async (req, res) => {
 
     const complaint = rows[0];
 
-    // SEND EMAIL (NON-BLOCKING SAFE)
+    // EMAIL SEND (NON-BLOCKING)
     try {
-      await transporter.sendMail({
+      await mailer.sendMail({
         from: `"Loudam Support" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: `Complaint Received - ${trackingId}`,
         html: `
-          <div style="font-family: Arial, sans-serif; line-height:1.6;">
-            <h2>Complaint Submitted Successfully</h2>
+          <div style="font-family: Arial; padding:20px;">
+            <h2 style="color:#ff6600;">Complaint Received</h2>
 
             <p>Hi <b>${full_name}</b>,</p>
 
-            <p>We have successfully received your complaint.</p>
+            <p>Your complaint has been successfully submitted.</p>
 
-            <p><b>Tracking ID:</b> ${trackingId}</p>
-            <p><b>Business:</b> ${business_name}</p>
-            <p><b>Subject:</b> ${subject}</p>
+            <p>
+              <b>Tracking ID:</b> ${trackingId}<br/>
+              <b>Business:</b> ${business_name}<br/>
+              <b>Category:</b> ${category}
+            </p>
 
-            <p>Use your tracking ID to follow up anytime.</p>
+            <div style="margin-top:20px;padding:10px;border-left:4px solid #ff6600;background:#f9f9f9;">
+              You can track your complaint anytime using your tracking ID.
+            </div>
 
-            <br/>
-
-            <p>Regards,<br/><b>Loudam Team</b></p>
+            <p style="margin-top:20px;">
+              Regards,<br/>
+              <b>Loudam Support Team</b>
+            </p>
           </div>
         `
       });
 
       console.log("📩 Email sent to:", email);
+
     } catch (mailErr) {
       console.error("❌ Email failed:", mailErr.message);
-      // IMPORTANT: do not fail request if email fails
     }
 
     return res.status(201).json({
@@ -119,5 +132,98 @@ exports.createComplaint = async (req, res) => {
       success: false,
       message: "Failed to submit complaint"
     });
+  }
+};
+// GET ALL COMPLAINTS (ADMIN)
+exports.getAllComplaints = async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM complaints ORDER BY created_at DESC");
+    res.json({ success: true, complaints: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Failed to fetch complaints" });
+  }
+};
+
+// UPDATE COMPLAINT STATUS (ADMIN)
+exports.updateComplaintStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowed = ["Pending", "In Progress", "Resolved"];
+
+    if (!allowed.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status"
+      });
+    }
+
+    const [result] = await pool.query(
+      "UPDATE complaints SET status = ? WHERE id = ?",
+      [status, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Status updated"
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update status"
+    });
+  }
+};
+
+// GET USER COMPLAINTS (LOGGED-IN USER)
+exports.getUserComplaints = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const [rows] = await pool.query(
+      "SELECT * FROM complaints WHERE user_id = ?",
+      [userId]
+    );
+
+    res.json({ success: true, complaints: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Failed to fetch user complaints" });
+  }
+};
+
+// TRACK COMPLAINT (PUBLIC)
+exports.trackComplaints = async (req, res) => {
+  try {
+    const { trackingId } = req.query;
+
+    const [rows] = await pool.query(
+      "SELECT * FROM complaints WHERE tracking_id = ?",
+      [trackingId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found"
+      });
+    }
+
+    res.json({ success: true, complaint: rows[0] });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Tracking failed" });
   }
 };

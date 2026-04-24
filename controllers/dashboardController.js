@@ -4,21 +4,22 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const [rows] = await pool.query(
+    const result = await pool.query(
       `
       SELECT 
         COUNT(*) AS total,
-        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
-        SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) AS in_progress,
-        SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved
+        COUNT(*) FILTER (WHERE status = 'Pending') AS pending,
+        COUNT(*) FILTER (WHERE status = 'In Progress') AS in_progress,
+        COUNT(*) FILTER (WHERE status = 'Resolved') AS resolved
       FROM complaints
-      WHERE user_id = ?
+      WHERE user_id = $1
       `,
       [userId]
     );
 
-    const raw = rows[0];
+    const raw = result.rows[0];
 
+    // 🔥 normalize to numbers
     const stats = {
       total: Number(raw.total),
       pending: Number(raw.pending),
