@@ -83,42 +83,41 @@ exports.createComplaint = async (req, res) => {
 
     // EMAIL SEND (NON-BLOCKING)
     try {
-      await mailer.sendMail({
-        from: `"Loudam Support" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: `Complaint Received - ${trackingId}`,
-        html: `
-          <div style="font-family: Arial; padding:20px;">
-            <h2 style="color:#ff6600;">Complaint Received</h2>
+  await mailer.sendMail({
+    from: `"Loudam Support" <no-reply@loudam.com>`,
+    to: email, // 👈 USER RECEIVES EMAIL HERE
+    subject: `Complaint Received - ${trackingId}`,
+    html: `
+      <div style="font-family: Arial; padding:20px;">
+        <h2 style="color:#ff6600;">Complaint Received</h2>
 
-            <p>Hi <b>${full_name}</b>,</p>
+        <p>Hi <b>${full_name}</b>,</p>
 
-            <p>Your complaint has been successfully submitted.</p>
+        <p>We have successfully received your complaint.</p>
 
-            <p>
-              <b>Tracking ID:</b> ${trackingId}<br/>
-              <b>Business:</b> ${business_name}<br/>
-              <b>Category:</b> ${category}
-            </p>
+        <p>
+          <b>Tracking ID:</b> ${trackingId}<br/>
+          <b>Business:</b> ${business_name}<br/>
+          <b>Category:</b> ${category}
+        </p>
 
-            <div style="margin-top:20px;padding:10px;border-left:4px solid #ff6600;background:#f9f9f9;">
-              You can track your complaint anytime using your tracking ID.
-            </div>
+        <p>
+          You can use your tracking ID to track progress anytime.
+        </p>
 
-            <p style="margin-top:20px;">
-              Regards,<br/>
-              <b>Loudam Support Team</b>
-            </p>
-          </div>
-        `
-      });
+        <p style="margin-top:20px;">
+          Regards,<br/>
+          <b>Loudam Support Team</b>
+        </p>
+      </div>
+    `,
+  });
 
-      console.log("📩 Email sent to:", email);
+  console.log("📩 Email sent successfully to user:", email);
 
-    } catch (mailErr) {
-      console.error("❌ Email failed:", mailErr.message);
-    }
-
+} catch (err) {
+  console.error("❌ Email sending failed:", err.message);
+}
     return res.status(201).json({
       success: true,
       message: "Complaint submitted successfully",
