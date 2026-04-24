@@ -20,10 +20,12 @@ exports.createComplaint = async (req, res) => {
       desiredResolution
     } = req.body;
 
-    let proof_url = null;
-    if (req.file) {
-      proof_url = `https://loudambackend.onrender.com/uploads/${req.file.filename}`;
-    }
+   let proof_url = null;
+
+if (req.file) {
+  const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+  proof_url = `${baseUrl}/uploads/${req.file.filename}`;
+}
 
     const trackingId = generateTrackingId();
     const userId = req.user ? req.user.id : null;
