@@ -11,27 +11,38 @@ exports.register = async (req, res) => {
   }
 
   try {
-    const existing = await pool.query(
-      'SELECT id FROM users WHERE email = $1 OR phone_number = $2',
+    const [existing] = await pool.query(
+      'SELECT id FROM users WHERE email = ? OR phone_number = ?',
       [email, phone_number]
     );
 
-    if (existing.rows.length > 0) {
+    if (existing.length > 0) {
       return res.status(400).json({ success: false, message: 'Email or phone number already registered' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const result = await pool.query(
+    // INSERT (no RETURNING in MySQL)
+    const [result] = await pool.query(
       `INSERT INTO users (full_name, phone_number, email, password)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, full_name, phone_number, email`,
+       VALUES (?, ?, ?, ?)`,
       [full_name, phone_number, email, hashedPassword]
     );
 
-    const newUser = result.rows[0];
+    // fetch inserted user manually
+    const [rows] = await pool.query(
+      `SELECT id, full_name, phone_number, email, role
+       FROM users WHERE id = ?`,
+      [result.insertId]
+    );
 
-    const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const newUser = rows[0];
+
+    const token = jwt.sign(
+      { id: newUser.id, email: newUser.email, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
 
     res.status(201).json({
       success: true,
@@ -51,13 +62,13 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const result = await pool.query(
+    const [rows] = await pool.query(
       `SELECT id, full_name, phone_number, email, password, role
-       FROM users WHERE email = $1`,
+       FROM users WHERE email = ?`,
       [email]
     );
 
-    const user = result.rows[0];
+    const user = rows[0];
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
@@ -68,7 +79,11 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
 
     res.json({
       success: true,

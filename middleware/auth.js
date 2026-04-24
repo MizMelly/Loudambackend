@@ -12,16 +12,20 @@ const auth = (req, res, next) => {
     }
 
     const token = authHeader.startsWith('Bearer ')
-      ? authHeader.replace('Bearer ', '')
+      ? authHeader.slice(7)
       : authHeader;
 
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = decoded;
 
     next();
   } catch (err) {
+    console.error("Auth error:", err.message);
+
     res.status(401).json({
       success: false,
-      message: 'Invalid token',
+      message: 'Invalid or expired token',
     });
   }
 };

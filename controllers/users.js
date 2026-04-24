@@ -7,14 +7,14 @@ exports.getDashboard = async (req, res) => {
 
     console.log('📊 Fetching dashboard for user ID:', userId);
 
-    const result = await pool.query(
+    const [rows] = await pool.query(
       `SELECT full_name, phone_number, email
        FROM users
-       WHERE id = $1`,
+       WHERE id = ?`,
       [userId]
     );
 
-    const user = result.rows[0];
+    const user = rows[0];
 
     if (!user) {
       console.log('❌ User not found with ID:', userId);
@@ -28,7 +28,7 @@ exports.getDashboard = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: user, // returns { full_name, phone_number, email }
+      data: user,
     });
 
   } catch (err) {

@@ -1,19 +1,10 @@
 const pool = require('../config/db');
-// const nodemailer = require('nodemailer');   // Commented out for now
-
-// const transporter = nodemailer.createTransport({
-//   service: 'gmail',
-//   auth: {
-//     user: process.env.EMAIL_USER,
-//     pass: process.env.EMAIL_PASS
-//   }
-// });
 
 const generateTrackingId = () => {
   return 'LD-' + Math.floor(100000 + Math.random() * 900000);
 };
 
-// Create Complaint - Public (but saves user_id if logged in)
+// CREATE COMPLAINT
 exports.createComplaint = async (req, res) => {
   try {
     const {
@@ -35,15 +26,13 @@ exports.createComplaint = async (req, res) => {
     }
 
     const trackingId = generateTrackingId();
-
     const userId = req.user ? req.user.id : null;
 
-    const result = await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO complaints 
        (tracking_id, full_name, phone_number, email, country, social_handle,
         business_name, category, subject, description, desired_resolution, proof_url, user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-       RETURNING *`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         trackingId,
         full_name,
@@ -61,13 +50,17 @@ exports.createComplaint = async (req, res) => {
       ]
     );
 
-    console.log("🧾 Complaint created:", trackingId, "User:", userId || "Guest");
+    // fetch inserted complaint
+    const [rows] = await pool.query(
+      `SELECT * FROM complaints WHERE id = ?`,
+      [result.insertId]
+    );
 
     res.status(201).json({
       success: true,
       message: "Complaint submitted successfully",
       trackingId,
-      complaint: result.rows[0]
+      complaint: rows[0]
     });
 
   } catch (err) {
@@ -79,7 +72,9 @@ exports.createComplaint = async (req, res) => {
   }
 };
 
-// Get logged-in user's complaints (protected)
+
+
+// GET USER COMPLAINTS
 exports.getUserComplaints = async (req, res) => {
   try {
     if (!req.user) {
@@ -91,37 +86,35 @@ exports.getUserComplaints = async (req, res) => {
 
     const userId = req.user.id;
 
-    // Link old guest complaints to this user
+    // link guest complaints
     await pool.query(
       `UPDATE complaints
-       SET user_id = $1
-       WHERE email = $2 AND user_id IS NULL`,
+       SET user_id = ?
+       WHERE email = ? AND user_id IS NULL`,
       [userId, req.user.email]
     );
-console.log("Logged in user email:", req.user.email);
-    // Fetch user's complaints
-    const result = await pool.query(
+
+    const [rows] = await pool.query(
       `SELECT * FROM complaints
-       WHERE user_id = $1
+       WHERE user_id = ?
        ORDER BY created_at DESC`,
       [userId]
     );
 
     res.json({
       success: true,
-      complaints: result.rows
+      complaints: rows
     });
 
   } catch (err) {
-    console.error('Get complaints error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 };
 
-// Track complaints by email or phone (public)
+
+
+// TRACK COMPLAINTS (PUBLIC)
 exports.trackComplaints = async (req, res) => {
   try {
     const { email, phone } = req.query;
@@ -137,22 +130,22 @@ exports.trackComplaints = async (req, res) => {
     const values = [];
 
     if (email) {
+      query += ` AND email = ?`;
       values.push(email);
-      query += ` AND email = $${values.length}`;
     }
 
     if (phone) {
+      query += ` AND phone_number = ?`;
       values.push(phone);
-      query += ` AND phone_number = $${values.length}`;
     }
 
     query += ` ORDER BY created_at DESC`;
 
-    const result = await pool.query(query, values);
+    const [rows] = await pool.query(query, values);
 
     res.json({
       success: true,
-      complaints: result.rows
+      complaints: rows
     });
 
   } catch (err) {
@@ -161,16 +154,18 @@ exports.trackComplaints = async (req, res) => {
   }
 };
 
-// Get all complaints
+
+
+// GET ALL COMPLAINTS
 exports.getAllComplaints = async (req, res) => {
   try {
-    const result = await pool.query(
+    const [rows] = await pool.query(
       `SELECT * FROM complaints ORDER BY created_at DESC`
     );
 
     res.json({
       success: true,
-      complaints: result.rows
+      complaints: rows
     });
   } catch (err) {
     console.error('Get all complaints error:', err);
@@ -178,61 +173,33 @@ exports.getAllComplaints = async (req, res) => {
   }
 };
 
-// Update complaint status
+
+
+// UPDATE STATUS
 exports.updateComplaintStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
-    const result = await pool.query(
+    await pool.query(
       `UPDATE complaints
-       SET status = $1
-       WHERE id = $2
-       RETURNING *`,
+       SET status = ?
+       WHERE id = ?`,
       [status, req.params.id]
     );
 
+    // fetch updated row
+    const [rows] = await pool.query(
+      `SELECT * FROM complaints WHERE id = ?`,
+      [req.params.id]
+    );
+
     res.json({
       success: true,
-      complaint: result.rows[0]
+      complaint: rows[0]
     });
+
   } catch (err) {
     console.error('Update error:', err);
     res.status(500).json({ message: 'Update failed' });
-  }
-};
-exports.getUserComplaints = async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Login required'
-      });
-    }
-
-    const userId = req.user.id;
-
-    // link guest complaints
-    await pool.query(
-      `UPDATE complaints
-       SET user_id = $1
-       WHERE email = $2 AND user_id IS NULL`,
-      [userId, req.user.email]
-    );
-
-    const result = await pool.query(
-      `SELECT * FROM complaints
-       WHERE user_id = $1
-       ORDER BY created_at DESC`,
-      [userId]
-    );
-
-    res.json({
-      success: true,
-      complaints: result.rows
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
   }
 };

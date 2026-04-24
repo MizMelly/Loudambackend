@@ -1,30 +1,38 @@
 const pool = require('../config/db');
 
-// GET DASHBOARD STATS
 exports.getDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const result = await pool.query(
+    const [rows] = await pool.query(
       `
       SELECT 
         COUNT(*) AS total,
-        COUNT(*) FILTER (WHERE status = 'Submitted') AS submitted,
-        COUNT(*) FILTER (WHERE status = 'In Progress') AS in_progress,
-        COUNT(*) FILTER (WHERE status = 'Resolved') AS resolved
+        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
+        SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) AS in_progress,
+        SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved
       FROM complaints
-      WHERE user_id = $1
+      WHERE user_id = ?
       `,
       [userId]
     );
 
+    const raw = rows[0];
+
+    const stats = {
+      total: Number(raw.total),
+      pending: Number(raw.pending),
+      in_progress: Number(raw.in_progress),
+      resolved: Number(raw.resolved),
+    };
+
     res.status(200).json({
       success: true,
-      stats: result.rows[0],
+      stats,
     });
 
   } catch (err) {
-    console.error('Dashboard error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Dashboard error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
