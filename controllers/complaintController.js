@@ -6,15 +6,6 @@ const generateTrackingId = () => {
 };
 
 
-// VERIFY EMAIL SERVER ON STARTUP
-mailer.verify((error) => {
-  if (error) {
-    console.log("❌ SMTP ERROR:", error);
-  } else {
-    console.log("📧 Email server is ready");
-  }
-});
-
 // CREATE COMPLAINT
 exports.createComplaint = async (req, res) => {
   try {
@@ -83,35 +74,23 @@ exports.createComplaint = async (req, res) => {
 
     // EMAIL SEND (NON-BLOCKING)
     try {
-  await mailer.sendMail({
-    from: `"Loudam Support" <no-reply@loudam.com>`,
-    to: email, // 👈 USER RECEIVES EMAIL HERE
-    subject: `Complaint Received - ${trackingId}`,
-    html: `
-      <div style="font-family: Arial; padding:20px;">
-        <h2 style="color:#ff6600;">Complaint Received</h2>
-
-        <p>Hi <b>${full_name}</b>,</p>
-
-        <p>We have successfully received your complaint.</p>
-
-        <p>
-          <b>Tracking ID:</b> ${trackingId}<br/>
-          <b>Business:</b> ${business_name}<br/>
-          <b>Category:</b> ${category}
-        </p>
-
-        <p>
-          You can use your tracking ID to track progress anytime.
-        </p>
-
-        <p style="margin-top:20px;">
-          Regards,<br/>
-          <b>Loudam Support Team</b>
-        </p>
-      </div>
-    `,
-  });
+ 
+   await mailer.send({
+  to: email, // user email
+  from: {
+    email: process.env.EMAIL_FROM, 
+    name: "Loudam Support"
+  },
+  subject: `Complaint Received - ${trackingId}`,
+  html: `
+    <div>
+      <h2>Complaint Received</h2>
+      <p>Hi ${full_name},</p>
+      <p>Your complaint has been submitted.</p>
+      <p><b>Tracking ID:</b> ${trackingId}</p>
+    </div>
+  `
+});
 
   console.log("📩 Email sent successfully to user:", email);
 
