@@ -73,29 +73,48 @@ exports.createComplaint = async (req, res) => {
     const complaint = rows[0];
 
     // EMAIL SEND (NON-BLOCKING)
-    try {
- 
-   await mailer.send({
-  to: email, // user email
-  from: {
-    email: process.env.EMAIL_FROM, 
-    name: "Loudam Support"
-  },
-  subject: `Complaint Received - ${trackingId}`,
-  html: `
-    <div>
-      <h2>Complaint Received</h2>
-      <p>Hi ${full_name},</p>
-      <p>Your complaint has been submitted.</p>
-      <p><b>Tracking ID:</b> ${trackingId}</p>
-    </div>
-  `
-});
+try {
+  await mailer.send({
+    to: email,
 
-  console.log("📩 Email sent successfully to user:", email);
+    // ✅ MUST be verified sender in SendGrid
+    from: {
+      email: "support@loudamnaija.com",
+      name: "Loudam Support"
+    },
+
+    subject: `Complaint Received - ${trackingId}`,
+
+    html: `
+      <div style="font-family: Arial; padding: 20px;">
+        <h2 style="color:#ff6600;">Complaint Received</h2>
+
+        <p>Hi <b>${full_name}</b>,</p>
+
+        <p>Your complaint has been successfully submitted.</p>
+
+        <p>
+          <b>Tracking ID:</b> ${trackingId}<br/>
+          <b>Business:</b> ${business_name}<br/>
+          <b>Category:</b> ${category}
+        </p>
+
+        <p style="margin-top:20px;">
+          You can track your complaint anytime using your tracking ID.
+        </p>
+
+        <p style="margin-top:20px;">
+          Regards,<br/>
+          <b>Loudam Support Team</b>
+        </p>
+      </div>
+    `
+  });
+
+  console.log("📩 Email SENT to user:", email);
 
 } catch (err) {
-  console.error("❌ Email sending failed:", err.message);
+  console.error("❌ Email failed:", err.response?.body || err.message);
 }
     return res.status(201).json({
       success: true,
