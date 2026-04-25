@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { register, login, forgotpassword } =
+const { register, login, forgotpassword, googleLogin } =
   require('../controllers/authController');
 
 const { getDashboardStats } = require('../controllers/dashboardController');
@@ -15,6 +15,7 @@ const {
 const auth = require('../middleware/auth');
 
 router.post('/register', register);
+router.post("/google", googleLogin);
 router.post('/login', login);
 router.post('/forgotpassword', forgotpassword);
 

@@ -1,6 +1,8 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // REGISTER
 exports.register = async (req, res) => {
@@ -57,6 +59,80 @@ exports.register = async (req, res) => {
   }
 };
 
+// GOOGLE LOGIN
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Google token missing",
+      });
+    }
+
+    // Verify Google token
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const { email, name, picture } = payload;
+
+    // Check if user exists
+    const [rows] = await pool.query(
+      "SELECT * FROM users WHERE email = ?",
+      [email]
+    );
+
+    let user;
+
+    if (rows.length === 0) {
+      // Create new Google user
+      const [result] = await pool.query(
+        `INSERT INTO users (full_name, email, password, role)
+         VALUES (?, ?, ?, ?)`,
+        [name, email, "", "user"]
+      );
+
+      const [newUser] = await pool.query(
+        "SELECT id, full_name, email, role FROM users WHERE id = ?",
+        [result.insertId]
+      );
+
+      user = newUser[0];
+    } else {
+      user = rows[0];
+    }
+
+    // Create JWT
+    const jwtToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    return res.json({
+      success: true,
+      message: "Google login successful",
+      user,
+      token: jwtToken,
+    });
+
+  } catch (err) {
+    console.error("Google login error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Google authentication failed",
+    });
+  }
+};
 // LOGIN
 exports.login = async (req, res) => {
   const { email, password } = req.body;
@@ -115,5 +191,6 @@ exports.forgotpassword = async (req, res) => {
 module.exports = {
   register: exports.register,
   login: exports.login,
-  forgotpassword: exports.forgotpassword
+  forgotpassword: exports.forgotpassword,
+  googleLogin: exports.googleLogin,
 };
