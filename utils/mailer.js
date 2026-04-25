@@ -1,9 +1,11 @@
 const sgMail = require("@sendgrid/mail");
 
-if (!process.env.SENDGRID_API_KEY) {
-  console.error("❌ SENDGRID_API_KEY is missing in environment variables");
-}
+const apiKey = process.env.SENDGRID_API_KEY;
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+if (apiKey) {
+  sgMail.setApiKey(apiKey);
+} else {
+  console.warn("⚠️ SendGrid not configured");
+}
 
 module.exports = sgMail;
