@@ -40,7 +40,7 @@ exports.createComplaint = async (req, res) => {
     }
 
     const trackingId = generateTrackingId();
-    const userId = req.user ? req.user.id : null;
+    const userId = null;
 
     // INSERT INTO DB
     const [result] = await pool.query(
@@ -66,8 +66,8 @@ exports.createComplaint = async (req, res) => {
     );
 
     const [rows] = await pool.query(
-      `SELECT * FROM complaints WHERE id = ?`,
-      [result.insertId]
+      `SELECT * FROM complaints WHERE email = ?`,
+      [email]
     );
 
     const complaint = rows[0];
@@ -186,17 +186,21 @@ exports.updateComplaintStatus = async (req, res) => {
 // GET USER COMPLAINTS (LOGGED-IN USER)
 exports.getUserComplaints = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userEmail = req.user.email;
 
     const [rows] = await pool.query(
-      "SELECT * FROM complaints WHERE user_id = ?",
-      [userId]
+      "SELECT * FROM complaints WHERE email = ? ORDER BY created_at DESC",
+      [userEmail]
     );
 
     res.json({ success: true, complaints: rows });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: "Failed to fetch user complaints" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user complaints"
+    });
   }
 };
 

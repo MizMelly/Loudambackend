@@ -38,7 +38,13 @@ exports.register = async (req, res) => {
       [result.insertId]
     );
 
-    const newUser = rows[0];
+   const newUser = rows[0];
+
+// 🔥 attach previous complaints
+await pool.query(
+  "UPDATE complaints SET user_id = ? WHERE email = ? AND user_id IS NULL",
+  [newUser.id, newUser.email]
+);
 
     const token = jwt.sign(
       { id: newUser.id, email: newUser.email, role: newUser.role },
@@ -71,17 +77,21 @@ exports.googleLogin = async (req, res) => {
       });
     }
 
-    // Verify Google token
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
+    const { email, name, email_verified } = payload;
 
-    const { email, name, picture } = payload;
+    if (!email_verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Google email not verified",
+      });
+    }
 
-    // Check if user exists
     const [rows] = await pool.query(
       "SELECT * FROM users WHERE email = ?",
       [email]
@@ -89,25 +99,30 @@ exports.googleLogin = async (req, res) => {
 
     let user;
 
+    // 🔥 CREATE USER IF NOT EXIST
     if (rows.length === 0) {
-      // Create new Google user
       const [result] = await pool.query(
         `INSERT INTO users (full_name, email, password, role)
          VALUES (?, ?, ?, ?)`,
-        [name, email, "", "user"]
+        [name, email, null, "user"]
       );
 
-      const [newUser] = await pool.query(
+      const [newUserRows] = await pool.query(
         "SELECT id, full_name, email, role FROM users WHERE id = ?",
         [result.insertId]
       );
 
-      user = newUser[0];
+      user = newUserRows[0];
     } else {
       user = rows[0];
     }
 
-    // Create JWT
+    // 🔥 NOW LINK COMPLAINTS (CORRECT PLACE)
+    await pool.query(
+      "UPDATE complaints SET user_id = ? WHERE email = ? AND user_id IS NULL",
+      [user.id, user.email]
+    );
+
     const jwtToken = jwt.sign(
       {
         id: user.id,
@@ -118,7 +133,7 @@ exports.googleLogin = async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    return res.json({
+    res.json({
       success: true,
       message: "Google login successful",
       user,
@@ -127,13 +142,14 @@ exports.googleLogin = async (req, res) => {
 
   } catch (err) {
     console.error("Google login error:", err);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Google authentication failed",
     });
   }
 };
-// LOGIN
+
+//LOGiN
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -146,9 +162,18 @@ exports.login = async (req, res) => {
 
     const user = rows[0];
 
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
+if (!user) {
+  return res.status(401).json({
+    success: false,
+    message: 'Invalid email or password'
+  });
+}
+
+// 🔥 NOW safe to link complaints
+await pool.query(
+  "UPDATE complaints SET user_id = ? WHERE email = ? AND user_id IS NULL",
+  [user.id, user.email]
+);
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
