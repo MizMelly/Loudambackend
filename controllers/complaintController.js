@@ -110,22 +110,37 @@ try {
         Use the buttons below to continue:
       </p>
 
-      <!-- CTA BUTTONS -->
-      <div style="text-align:center; margin:25px 0;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:25px 0;">
+  <tr>
+    <td align="center">
 
-        <!-- Track Complaint -->
-        <a href="https://loudamnaija.com/track-complaints?trackingId=${trackingId}" 
-           style="background:#1e88e5; color:#fff; padding:12px 18px; text-decoration:none; border-radius:6px; display:inline-block; margin-right:10px;">
-          Track Your Complaint
-        </a>
+      <!-- TRACK BUTTON -->
+      <table role="presentation" cellspacing="0" cellpadding="0" style="display:inline-block; margin-right:10px;">
+        <tr>
+          <td bgcolor="#1e88e5" style="border-radius:6px;">
+            <a href="https://loudamnaija.com/track-complaints?trackingId=${trackingId}"
+               style="display:inline-block; padding:12px 18px; color:#fff; text-decoration:none; font-weight:bold;">
+              Track Complaint
+            </a>
+          </td>
+        </tr>
+      </table>
 
-        <!-- Register -->
-        <a href="https://loudamnaija.com/register" 
-           style="background:#ff6600; color:#fff; padding:12px 18px; text-decoration:none; border-radius:6px; display:inline-block;">
-          Create Account
-        </a>
+      <!-- REGISTER BUTTON -->
+      <table role="presentation" cellspacing="0" cellpadding="0" style="display:inline-block;">
+        <tr>
+          <td bgcolor="#ff6600" style="border-radius:6px;">
+            <a href="https://loudamnaija.com/register"
+               style="display:inline-block; padding:12px 18px; color:#fff; text-decoration:none; font-weight:bold;">
+              Create Account
+            </a>
+          </td>
+        </tr>
+      </table>
 
-      </div>
+    </td>
+  </tr>
+</table>
 
       <p style="font-size:13px; color:#666;">
         If you already have an account, simply log in to view full updates and history of your complaints.

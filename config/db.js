@@ -9,12 +9,21 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT || 3306,
 
   waitForConnections: true,
-  connectionLimit: 5, // reduce load for cPanel
+  connectionLimit: 5,
   queueLimit: 0,
 
   connectTimeout: 10000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
 });
+
+pool.getConnection()
+  .then(connection => {
+    console.log("✅ MySQL connected successfully");
+    connection.release();
+  })
+  .catch(err => {
+    console.error("❌ MySQL connection error:", err.message);
+  });
 
 module.exports = pool;
