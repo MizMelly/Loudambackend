@@ -85,30 +85,60 @@ try {
 
     subject: `Complaint Received - ${trackingId}`,
 
-    html: `
-      <div style="font-family: Arial; padding: 20px;">
-        <h2 style="color:#ff6600;">Complaint Received</h2>
+  html: `
+  <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:30px;">
+    
+    <div style="max-width:600px; margin:auto; background:#ffffff; padding:25px; border-radius:10px;">
 
-        <p>Hi <b>${full_name}</b>,</p>
+      <h2 style="color:#ff6600; margin-bottom:10px;">
+        Complaint Successfully Received
+      </h2>
 
-        <p>Your complaint has been successfully submitted.</p>
+      <p>Hi <b>${full_name}</b>,</p>
 
-        <p>
-          <b>Tracking ID:</b> ${trackingId}<br/>
-          <b>Business:</b> ${business_name}<br/>
-          <b>Category:</b> ${category}
-        </p>
+      <p>
+        Thank you for reaching out to <b>Loudam Support</b>. Your complaint has been successfully submitted and is now being reviewed by our team.
+      </p>
 
-        <p style="margin-top:20px;">
-          You can track your complaint anytime using your tracking ID.
-        </p>
-
-        <p style="margin-top:20px;">
-          Regards,<br/>
-          <b>Loudam Support Team</b>
-        </p>
+      <div style="background:#f4f4f4; padding:15px; border-radius:8px; margin:20px 0;">
+        <p><b>Tracking ID:</b> ${trackingId}</p>
+        <p><b>Business:</b> ${business_name}</p>
+        <p><b>Category:</b> ${category}</p>
       </div>
-    `
+
+      <p>
+        Use the buttons below to continue:
+      </p>
+
+      <!-- CTA BUTTONS -->
+      <div style="text-align:center; margin:25px 0;">
+
+        <!-- Track Complaint -->
+        <a href="https://loudamnaija.com/track-complaints?trackingId=${trackingId}" 
+           style="background:#1e88e5; color:#fff; padding:12px 18px; text-decoration:none; border-radius:6px; display:inline-block; margin-right:10px;">
+          Track Your Complaint
+        </a>
+
+        <!-- Register -->
+        <a href="https://loudamnaija.com/register" 
+           style="background:#ff6600; color:#fff; padding:12px 18px; text-decoration:none; border-radius:6px; display:inline-block;">
+          Create Account
+        </a>
+
+      </div>
+
+      <p style="font-size:13px; color:#666;">
+        If you already have an account, simply log in to view full updates and history of your complaints.
+      </p>
+
+      <p style="margin-top:30px;">
+        Regards,<br/>
+        <b>Loudam Support Team</b>
+      </p>
+
+    </div>
+  </div>
+`
   });
 
   console.log("📩 Email SENT to user:", email);
